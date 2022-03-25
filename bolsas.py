@@ -4,7 +4,10 @@
 # Programa desenvolvido para processo de seleção
 #
 # Autor:  Carlos Gomes (cgomesu)
-# Versão: 24/03/2022
+# Versão: 26/03/2022
+#
+# Repositório:
+# - https://github.com/cgomesu/programa-bolsas
 #
 # Documentação relacionada:
 # - curses: https://docs.python.org/3/library/curses.html
@@ -15,21 +18,23 @@ import curses
 from curses.textpad import Textbox
 from time import sleep
 import utils
-
+import re
 
 ## Constantes passiveis de personalização
 MENU = [
     "Consultar bolsa zero / Ano",
-    "Codificar nome",
+    "Codificar nomes",
     "Consultar média anual",
     "Ranking valores de bolsa",
     "Sair"
 ]
-## área de trabalho dos dados e nome do arquivo com dados
-DIR_TRABALHO = "/home/cgomes/desktop universal/CARLOS/UNDERGRAD/INTERNSHIPS/DELL-IT-ACADEMY/etapa_2/data/"
+## diretório de trabalho dos dados e nome do arquivo com dados
+DIR_TRABALHO = "data/"
 ARQUIVO_CSV = "br-capes-bolsistas-uab.csv"
-## usado para input de texto do usuário; número máximo de caracteres
-TEXTBOX_NUMERO_CARACTERES = 60
+## número máximo de caracteres no input de texto
+TEXTBOX_CARACTERES_MAX = 60
+## ranking das maiores e menores bolsas
+RANKING_BOLSAS = 3
 
 def imprimir_menu_centro(janela, linha_selecionada):
     janela.clear()
@@ -66,15 +71,15 @@ def imprimir_string_centro(janela, string):
 
 def input_textbox_string_centro(janela, string):
     ## imprime janela e cria campo de texto para retornar input de texto do usuário
-    string_final = string + " (Pressione 'Ctrl + g' para enviar)"
+    string_final = string + " (Pressione 'Enter' ou 'Ctrl+g' para confirmar.)"
     janela.clear()
     janela_altura, janela_largura = janela.getmaxyx()
     ## ajustar para tamanho da string final
-    x = janela_largura//2 ##- len(string_final)//2
+    x = janela_largura//2
     y = janela_altura//2
     janela.addstr(y-2, x-(len(string_final)//2), string_final)
     ## nova janela para user input abaixo do título e no centro; tamanho proporcional ao título
-    editwin = curses.newwin(1, TEXTBOX_NUMERO_CARACTERES, y, x-(len(string_final)//2))
+    editwin = curses.newwin(1, TEXTBOX_CARACTERES_MAX, y, x-(len(string_final)//2))
     janela.refresh()
     box = Textbox(editwin)
     box.edit()
@@ -82,16 +87,125 @@ def input_textbox_string_centro(janela, string):
     janela.refresh()
     return nome_digitado
 
+def opcao_consulta_bolsa_ano(janela, dados):
+    ano_digitado = ""
+    while type(ano_digitado) is not int:
+        try:
+            ano_digitado = int(input_textbox_string_centro(janela, "Digite o ANO (YYYY) abaixo:"))
+        except:
+            imprimir_string_centro(janela, string="Digite um ANO válido.")
+            sleep(1)
+    ## filtrar df de acordo com ano
+    dados_ano = dados[(dados["AN_REFERENCIA"] == ano_digitado) & (dados["ME_REFERENCIA"] == 1)]
+    ## lidar com df vazio
+    if dados_ano.empty:
+        imprimir_string_centro(janela, string="Ano {} não encontrado.".format(ano_digitado))
+    else:
+        imprimir_lista_centro(janela, lista=["Informações do bolsista zero do ano {}".format(ano_digitado),
+            "Nome: '{}'".format(dados_ano.iloc[0]["NM_BOLSISTA"]),
+            "CPF: '{}'".format(dados_ano.iloc[0]["CPF_BOLSISTA"]),
+            "Entidade de ensino: '{}'".format(dados_ano.iloc[0]["NM_ENTIDADE_ENSINO"]),
+            "Valor da bolsa (em {}): '{}'".format(dados_ano.iloc[0]["CD_MOEDA"],dados_ano.iloc[0]["VL_BOLSISTA_PAGAMENTO"]),]
+            )
+
+def opcao_procura_codifica_nome(janela, dados):
+    nome_digitado = utils.formatador(input_textbox_string_centro(janela, "Digite o NOME abaixo:"))
+    ## verificar se existe em qualquer lugar da coluna
+    if dados["NM_BOLSISTA"].str.contains(nome_digitado).any():
+        dados_com_nome = dados[dados["NM_BOLSISTA"].str.contains(nome_digitado)]
+        ## loop casos com nome para perguntar ao usuario
+        for i in range(len(dados_com_nome[["NM_BOLSISTA"]])):
+            if re.match("^.*"+nome_digitado+".*$", dados_com_nome.iloc[i-1]["NM_BOLSISTA"]):
+                imprimir_lista_centro(janela, lista=[
+                    "Nome encontrado:",
+                    "'{}'".format(dados_com_nome.iloc[i-1]["NM_BOLSISTA"]),
+                    "",
+                    "Pressione 'ENTER' para CONFIRMAR",
+                    "ou pressione outra telca para ir ao próximo.",]
+                    )
+                if janela.getch() == 10:
+                    ## usar utilitario para codificar nome via join (com espaco) + list comprehension
+                    nome_codificado = ' '.join(utils.codificador(n) for n in dados_com_nome.iloc[i-1]["NM_BOLSISTA"].split())
+                    imprimir_lista_centro(janela, lista=["Informações do bolsista",
+                        "Nome (codificado): '{}'".format(nome_codificado),
+                        "Ano: '{}'".format(dados_com_nome.iloc[i-1]["AN_REFERENCIA"]),
+                        "Entidade de ensino: '{}'".format(dados_com_nome.iloc[i-1]["NM_ENTIDADE_ENSINO"]),
+                        "Valor da bolsa (em {}): '{}'".format(dados_com_nome.iloc[i-1]["CD_MOEDA"],dados_com_nome.iloc[i-1]["VL_BOLSISTA_PAGAMENTO"]),]
+                        )
+                    break
+    else:
+        imprimir_string_centro(janela, string="Não encontrado bolsista '{}'".format(nome_digitado))
+
+def opcao_consulta_media_anual(janela, dados):
+    ano_digitado = ""
+    ## esperar até que usuário digite um inteiro
+    while type(ano_digitado) is not int:
+        try:
+            ano_digitado = int(input_textbox_string_centro(janela, "Digite o ANO (YYYY) abaixo:"))
+        except:
+            imprimir_string_centro(janela, string="Digite um ANO válido.")
+            sleep(2)
+    ## filtrar df de acordo com ano
+    dados_ano = dados[(dados["AN_REFERENCIA"] == ano_digitado)]
+    ## lidar com df vazio
+    if dados_ano.empty:
+        imprimir_string_centro(janela, string="Ano {} não encontrado.".format(ano_digitado))
+    else:
+        imprimir_lista_centro(janela, lista=["Média do valor das bolas do Ano {}".format(ano_digitado),
+            "média = '{:.2f}'".format(dados_ano["VL_BOLSISTA_PAGAMENTO"].mean())]
+            )
+
+def opcao_ranking_bolsas(janela, dados, ranking=RANKING_BOLSAS):
+    ## use de nlargest e nsmallest para achar ranking bolsas
+    dados_tres_maiores_bolsas = dados.nlargest(ranking, "VL_BOLSISTA_PAGAMENTO")
+    dados_tres_menores_bolsas = dados.nsmallest(ranking, "VL_BOLSISTA_PAGAMENTO")
+    for i in range(ranking):
+        imprimir_lista_centro(janela, lista=["Os {} alunos com bolsa mais ALTA:".format(ranking),
+        "{}. '{}' ({} {})".format(i+1,
+            dados_tres_maiores_bolsas.iloc[i]["NM_BOLSISTA"],
+            dados_tres_maiores_bolsas.iloc[i]["CD_MOEDA"],
+            dados_tres_maiores_bolsas.iloc[i]["VL_BOLSISTA_PAGAMENTO"]),
+            "", "Pressione qualquer tecla para ir ao próximo..."]
+            )
+        janela.getch()
+    for i in range(ranking):
+        imprimir_lista_centro(janela, lista=["Os {} alunos com bolsa mais BAIXA:".format(ranking),
+        "{}. '{}' ({} {})".format(i+1,
+            dados_tres_menores_bolsas.iloc[i]["NM_BOLSISTA"],
+            dados_tres_menores_bolsas.iloc[i]["CD_MOEDA"],
+            dados_tres_menores_bolsas.iloc[i]["VL_BOLSISTA_PAGAMENTO"]),
+            "", "Pressione qualquer tecla para ir ao próximo..."]
+            )
+        if i < ranking-1:
+            janela.getch()
+
 def main(janela):
     ## inicializar configuração básica do curses
     curses.curs_set(False)  ##cursor
     curses.init_pair(1, curses.COLOR_BLACK, curses.COLOR_GREEN)  ##par da cor de seleção padrão
-    linha_atual = 0  ##linha selecionada
+    linha_atual = 0  ##linha selecionada inicial
 
     ## inicializar objeto de dados e criar um df salvo na memoria para manipulação
-    imprimir_lista_centro(janela, lista=["Aguarde enquanto estou lendo o seguinte arquivo de dados:", "'{}'".format(ARQUIVO_CSV)])
-    dados = utils.Dados(DIR_TRABALHO+ARQUIVO_CSV).csv_to_dataframe()
+    imprimir_lista_centro(janela, lista=["Lendo o arquivo CSV:",
+        "'{}'".format(ARQUIVO_CSV)]
+        )
+    dados,err = utils.Dados(DIR_TRABALHO+ARQUIVO_CSV).csv_to_dataframe()
     sleep(1)
+    if err:
+        imprimir_lista_centro(janela, lista=["Atenção! O programa não conseguiu ler o arquivo CSV com opções padrão:",
+            "'{}'".format(ARQUIVO_CSV),
+            "",
+            "O programa continuará, porém é possível que alguns dados foram perdidos no processo.",
+            "Pressione qualquer tecla para continuar..."]
+            )
+        janela.getch()
+    if dados.empty:
+        imprimir_lista_centro(janela, lista=["Erro crítico! Nenhum dado foi lido.",
+            "Verifique o arquivo CSV e tente novamente.",
+            "Pressione qualquer tecla para terminar o programa."]
+            )
+        janela.getch()
+        exit()
 
     ## menu principal
     imprimir_menu_centro(janela, linha_atual)
@@ -102,30 +216,26 @@ def main(janela):
             linha_atual -= 1
         elif tecla == curses.KEY_DOWN and linha_atual < len(MENU)-1:
             linha_atual += 1
-        ## KEY_ENTER parece não confiável; 10 parece funcionar para 'Enter/Return'
+        ## KEY_ENTER parece não confiável; 10 parece mais fidedigno
         elif tecla == 10:
-            ## lidar com opção selecionada (MENU[linha_atual])
-            imprimir_string_centro(janela, string="Opção selecionada: '{}'".format(MENU[linha_atual]))
-            sleep(1)
-            ## opção #1
+            ## lidar com opção selecionada no menu (MENU[linha_atual])
+            ## opção #1: consulta bolsa zero / ano
             if linha_atual == 0:
-                pass
-            ## opção #2:codifica nome digitado por usuário
+                opcao_consulta_bolsa_ano(janela, dados)
+            ## opção #2: procura e codifica nome digitado por usuário
             elif linha_atual == 1:
-                nome_digitado = input_textbox_string_centro(janela, "Digite o NOME abaixo:")
-                nome_codificado = ' '.join(utils.codificador(s) for s in nome_digitado.split())
-                imprimir_lista_centro(janela, lista=["Nome codificado:", "'{}'".format(nome_codificado)])
-            ## opção #3
+                opcao_procura_codifica_nome(janela, dados)
+            ## opção #3: consulta média anual
             elif linha_atual == 2:
-                pass
-            ## opção #4
+                opcao_consulta_media_anual(janela, dados)
+            ## opção #4: ranking tres maiores e menores bolsas
             elif linha_atual == 3:
-                pass
+                opcao_ranking_bolsas(janela, dados)
             ## última opção: sair
             elif linha_atual == len(MENU)-1:
                 break
             janela.getch()
         imprimir_menu_centro(janela, linha_atual)
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     curses.wrapper(main)

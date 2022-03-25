@@ -1,2 +1,2 @@
-from .dados import Dados
+from .dados import *
 from .ferramentas import *
