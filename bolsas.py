@@ -1,15 +1,14 @@
-#!/usr/bin/python3
+#!/usr/bin/env python3
 
 #########################################################
-# Programa para processo de seleção PUCRS/Dell IT Academy
+# Programa desenvolvido para processo de seleção
 #
-# Autor:  Carlos Gomes (cgomesu)                          
-# Versão: 24/03/2022                                      
+# Autor:  Carlos Gomes (cgomesu)
+# Versão: 24/03/2022
 #
 # Documentação relacionada:
 # - curses: https://docs.python.org/3/library/curses.html
 # - pandas: https://pandas.pydata.org/docs/
-# 
 #########################################################
 
 import curses
@@ -17,6 +16,8 @@ from curses.textpad import Textbox
 from time import sleep
 import utils
 
+
+## Constantes passiveis de personalização
 MENU = [
     "Consultar bolsa zero / Ano",
     "Codificar nome",
@@ -24,10 +25,10 @@ MENU = [
     "Ranking valores de bolsa",
     "Sair"
 ]
-
+## área de trabalho dos dados e nome do arquivo com dados
 DIR_TRABALHO = "/home/cgomes/desktop universal/CARLOS/UNDERGRAD/INTERNSHIPS/DELL-IT-ACADEMY/etapa_2/data/"
 ARQUIVO_CSV = "br-capes-bolsistas-uab.csv"
-
+## usado para input de texto do usuário; número máximo de caracteres
 TEXTBOX_NUMERO_CARACTERES = 60
 
 def imprimir_menu_centro(janela, linha_selecionada):
@@ -90,7 +91,7 @@ def main(janela):
     ## inicializar objeto de dados e criar um df salvo na memoria para manipulação
     imprimir_lista_centro(janela, lista=["Aguarde enquanto estou lendo o seguinte arquivo de dados:", "'{}'".format(ARQUIVO_CSV)])
     dados = utils.Dados(DIR_TRABALHO+ARQUIVO_CSV).csv_to_dataframe()
-    sleep(2)
+    sleep(1)
 
     ## menu principal
     imprimir_menu_centro(janela, linha_atual)
@@ -105,7 +106,7 @@ def main(janela):
         elif tecla == 10:
             ## lidar com opção selecionada (MENU[linha_atual])
             imprimir_string_centro(janela, string="Opção selecionada: '{}'".format(MENU[linha_atual]))
-            sleep(2)
+            sleep(1)
             ## opção #1
             if linha_atual == 0:
                 pass
