@@ -1,7 +1,7 @@
 import pandas
 import pandera
 
-## esquema de validação da df via pandera
+## esquema de validação simples (tipos) da df via pandera
 SCHEMA_DICT = {
     "NM_BOLSISTA": pandera.Column(str),
     "CPF_BOLSISTA": pandera.Column(str),
@@ -30,7 +30,8 @@ class Dados:
             return pandas.read_csv(self.arquivo, sep=",|;", encoding="ISO-8859-1", engine="python", on_bad_lines="skip")
 
     @staticmethod
-    def validate_df(df, log_failures):
+    def validador_df(df, log_failures):
+        ## confere df em relação ao esquema de nomes e tipos via pandera
         schema = pandera.DataFrameSchema(SCHEMA_DICT)
         try:
             schema(df, lazy=True), object()
@@ -39,3 +40,13 @@ class Dados:
             with open(log_failures, 'w') as f:
                 f.write("{}".format(err))
             return False
+    
+    @staticmethod
+    ## iterable para coluna e total de valores em branco para uma df
+    def soma_missing_por_col(df):
+        for col in df.columns:
+            soma_missing = df[col].isnull().sum()
+            # print(soma_missing)
+            if soma_missing > 0:
+                yield col, soma_missing
+

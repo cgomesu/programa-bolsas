@@ -189,9 +189,9 @@ def inicializar_dados(janela):
         janela.getch()
         exit()
     ## validar dataframe importado para memória
-    imprimir_string_centro(janela, string="Validando os dados...")
+    imprimir_string_centro(janela, string="Validando estrutura dos dados...")
     sleep(1)
-    if not utils.Dados.validate_df(dados, log_failures=LOG_DIR+LOG_FAILURE_CASES):
+    if not utils.Dados.validador_df(dados, log_failures=LOG_DIR+LOG_FAILURE_CASES):
         imprimir_lista_centro(janela, lista=["Erro crítico! O dataframe não passou a validação.",
             "Um log dos erros e casos será gravado em '{}'".format(LOG_DIR+LOG_FAILURE_CASES), "",
             "Corrigir os problemas no arquivo CSV e tentar novamente.",
@@ -199,7 +199,16 @@ def inicializar_dados(janela):
         janela.getch()
         exit()
     imprimir_string_centro(janela, string="Dados validados com sucesso!")
-    sleep(2)
+    sleep(3)
+    ## verficar células em branco
+    imprimir_string_centro(janela, string="Verificando valores em branco...")
+    sleep(1)
+    for coluna, soma in utils.Dados.soma_missing_por_col(dados):
+        imprimir_lista_centro(janela, lista=["Achei um total de '{}' valores em branco na coluna '{}'".format(soma, coluna),
+            "", "Pressione qualquer tecla para continuar..."])
+        janela.getch()
+    imprimir_string_centro(janela, string="Fim da verificação de valores em branco.")
+    sleep(3)
     return dados
 
 def main(janela):
