@@ -30,15 +30,16 @@ class Dados:
             return pandas.read_csv(self.arquivo, sep=",|;", encoding="ISO-8859-1", engine="python", on_bad_lines="skip")
 
     @staticmethod
-    def validador_df(df, log_failures):
+    def validador_df(df, log_failures=None):
         ## confere df em relação ao esquema de nomes e tipos via pandera
         schema = pandera.DataFrameSchema(SCHEMA_DICT)
         try:
-            schema(df, lazy=True), object()
+            schema(df, lazy=True)
             return True
         except pandera.errors.SchemaErrors as err:
-            with open(log_failures, 'w') as f:
-                f.write("{}".format(err))
+            if log_failures:
+                with open(log_failures, 'w') as f:
+                    f.write("{}".format(err))
             return False
     
     @staticmethod

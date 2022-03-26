@@ -114,7 +114,8 @@ def opcao_consulta_bolsa_ano(janela, dados):
             "Valor da bolsa (em {}): '{}'".format(dados_ano.iloc[0]["CD_MOEDA"],dados_ano.iloc[0]["VL_BOLSISTA_PAGAMENTO"]),])
 
 def opcao_procura_codifica_nome(janela, dados):
-    nome_digitado = utils.formatador(input_textbox_string_centro(janela, "Digite o NOME abaixo:"))
+    nome_digitado = input_textbox_string_centro(janela, "Digite o NOME abaixo:")
+    nome_digitado = ' '.join(utils.formatador(n) for n in nome_digitado.split())
     ## verificar se existe em qualquer lugar da coluna
     if dados["NM_BOLSISTA"].str.contains(nome_digitado).any():
         dados_com_nome = dados[dados["NM_BOLSISTA"].str.contains(nome_digitado)]
